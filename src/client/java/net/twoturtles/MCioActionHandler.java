@@ -1,6 +1,7 @@
 package net.twoturtles;
 
 import com.mojang.logging.LogUtils;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 import net.minecraft.client.Minecraft;
@@ -36,6 +37,10 @@ class MCioActionHandler {
   void processAction(ActionPacket action) {
     recvPPS.count();
     LOGGER.debug("ActionPacket: {}", action);
+
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("ActionSeq: {} inputs={}", action.sequence(), Arrays.toString(action.inputs()));
+    }
 
     /* Stop */
     if (action.stop()) {

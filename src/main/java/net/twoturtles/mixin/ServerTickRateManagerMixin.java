@@ -10,14 +10,16 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(ServerTickRateManager.class)
 public class ServerTickRateManagerMixin {
   /**
-   * Keep the server loop in sprint mode (no inter-tick sleep) while pacing is active. The world is
-   * frozen and only advances via onEndServerTick grants, so while waiting for clients this loop
-   * spins and uses a full core.
+   * While pacing is active, keep the server loop in sprint mode (no inter-tick sleep). The world is
+   * frozen; MinecraftServerMixin runs a full tick only when MCioMultiplayerSync has granted one and
+   * parks briefly on idle spins. During logins, fall back to normal 20 TPS ticking.
    */
   @Inject(method = "checkShouldSprintThisTick", at = @At("HEAD"), cancellable = true)
   private void mcioForceSprint(CallbackInfoReturnable<Boolean> cir) {
-    if (MCioMultiplayerSync.getInstance().isPacingActive()) {
-      cir.setReturnValue(true);
+    MCioMultiplayerSync sync = MCioMultiplayerSync.getInstance();
+    if (sync.isSprintStarted()) {
+      // Sprint (and gate) while pacing; during logins fall back to normal 20 TPS ticking.
+      cir.setReturnValue(sync.isPacingActive());
     }
   }
 }

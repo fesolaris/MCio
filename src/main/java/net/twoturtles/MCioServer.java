@@ -43,7 +43,7 @@ public class MCioServer implements ModInitializer {
       ServerPlayConnectionEvents.DISCONNECT.register(
           (handler, server) -> {
             if (handler.getPlayer() != null) {
-              MCioMultiplayerSync.getInstance().onDisconnect(handler.getPlayer());
+              MCioMultiplayerSync.getInstance().onDisconnect(server, handler.getPlayer());
             }
           });
     }

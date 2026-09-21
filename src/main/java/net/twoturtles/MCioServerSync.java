@@ -33,9 +33,7 @@ class MCioServerSync {
   }
 
   void endTickCB(MinecraftServer server) {
-    if (config.syncMultiplayer) {
-      MCioMultiplayerSync.getInstance().onEndServerTick(server);
-    } else {
+    if (!config.syncMultiplayer) {
       syncUtil.serverEndTick();
     }
   }

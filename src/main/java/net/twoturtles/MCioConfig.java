@@ -60,6 +60,7 @@ public class MCioConfig {
   public GameType openToLanMode;
   public boolean statsReset;
   public boolean syncMultiplayer;
+  public int tickGrantLogEvery;
 
   // Defaults
   public static final MCioMode DEFAULT_MCIO_MODE = MCioMode.ASYNC;
@@ -79,6 +80,7 @@ public class MCioConfig {
   public static final int DEFAULT_OPEN_TO_LAN_PORT = 12001;
   public static final GameType DEFAULT_OPEN_TO_LAN_MODE = GameType.SPECTATOR;
   public static final boolean DEFAULT_STATS_RESET = true;
+  public static final int DEFAULT_TICK_GRANT_LOG_EVERY = 200;
 
   // Singleton instance
   private static final MCioConfig INSTANCE = new MCioConfig();
@@ -121,6 +123,7 @@ public class MCioConfig {
     syncMultiplayer =
         getBoolean(
             "MCIO_SYNC_MULTIPLAYER", mode == MCioMode.SYNC && (openToLan || dedicatedServer));
+    tickGrantLogEvery = getInt("MCIO_TICK_GRANT_LOG_EVERY", DEFAULT_TICK_GRANT_LOG_EVERY);
 
     LOGGER.info("MCIO_MODE={}", mode);
     LOGGER.info("MCIO_FRAME_TYPE={}", frameType);
@@ -138,6 +141,7 @@ public class MCioConfig {
     LOGGER.info("MCIO_OPEN_TO_LAN_MODE={}", openToLanMode);
     LOGGER.info("MCIO_STATS_RESET={}", statsReset);
     LOGGER.info("MCIO_SYNC_MULTIPLAYER={}", syncMultiplayer);
+    LOGGER.info("MCIO_TICK_GRANT_LOG_EVERY={}", tickGrantLogEvery);
   }
 
   // Helper methods for parsing config values from system properties or env vars
@@ -297,6 +301,9 @@ public class MCioConfig {
                   MCIO_FRAME_TYPE                %s Default: %s
                     Set the frame type format
 
+                  MCIO_TICK_GRANT_LOG_EVERY      [int] Default: %d
+                    Log every Nth server tick grant in multiplayer sync (0 disables)
+
                 """
         .formatted(
             Arrays.toString(MCioMode.values()),
@@ -318,6 +325,7 @@ public class MCioConfig {
             Arrays.toString(MCioAsyncObsTrigger.values()),
             DEFAULT_ASYNC_OBSERVATION_TRIGGER,
             Arrays.toString(MCioFrameType.values()),
-            DEFAULT_MCIO_FRAME_TYPE);
+            DEFAULT_MCIO_FRAME_TYPE,
+            DEFAULT_TICK_GRANT_LOG_EVERY);
   }
 }

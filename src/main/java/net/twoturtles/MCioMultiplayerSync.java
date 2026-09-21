@@ -4,10 +4,14 @@ import com.mojang.logging.LogUtils;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.locks.LockSupport;
+import net.minecraft.Util;
 import net.minecraft.network.protocol.game.ClientboundTickingStatePacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.ServerTickRateManager;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.network.ServerGamePacketListenerImpl;
+import net.twoturtles.mixin.ServerCommonPacketListenerImplInvoker;
 import net.twoturtles.mixin.ServerTickRateManagerAccessor;
 import net.twoturtles.mixin.TickRateManagerAccessor;
 import org.slf4j.Logger;
@@ -15,7 +19,8 @@ import org.slf4j.Logger;
 public class MCioMultiplayerSync {
   private static final Logger LOGGER = LogUtils.getLogger();
   private static final MCioMultiplayerSync INSTANCE = new MCioMultiplayerSync();
-  private static final long LOG_EVERY = 200;
+  private static final long IDLE_PARK_NANOS = 50_000;
+  private static final long KEEPALIVE_INTERVAL_MS = 1_000;
 
   public static MCioMultiplayerSync getInstance() {
     return INSTANCE;
@@ -24,17 +29,30 @@ public class MCioMultiplayerSync {
   private MCioMultiplayerSync() {}
 
   private static final class ClientState {
+    final ServerGamePacketListenerImpl connection;
     int tickDone;
     int consumed;
+
+    ClientState(ServerGamePacketListenerImpl connection) {
+      this.connection = connection;
+    }
   }
 
   private final Map<UUID, ClientState> clients = new HashMap<>();
   private MinecraftServer server;
   private boolean sprintStarted = false;
   private long grantCount = 0;
+  private long lastKeepAliveMs = 0;
+  private boolean warnedNotFrozen = false;
 
   public boolean isPacingActive() {
-    return sprintStarted && !clients.isEmpty();
+    if (!sprintStarted || clients.isEmpty() || server == null) {
+      return false;
+    }
+
+    int connections = server.getConnection().getConnections().size();
+    int players = server.getPlayerList().getPlayers().size();
+    return connections <= players;
   }
 
   public void serverInit(MinecraftServer server) {
@@ -50,22 +68,16 @@ public class MCioMultiplayerSync {
       LOGGER.warn("MCio-Ready ignored, multiplayer sync not active");
       return;
     }
-    clients.putIfAbsent(player.getUUID(), new ClientState());
+    ClientState prev = clients.get(player.getUUID());
+    if (prev == null || prev.connection != player.connection) {
+      clients.put(player.getUUID(), new ClientState(player.connection));
+    }
     LOGGER.info("MCio-Ready player={} registered={}", player.getName().getString(), clients.size());
     if (!sprintStarted) {
       startSprint();
     }
   }
 
-  /**
-   * Records that a client finished a tick. Server-side pacing: the server advances one tick once
-   * every registered client has finished at least one new tick. Clients never wait for the server,
-   * so if a client runs ahead, its extra ticks are merged into a single server tick (the server's
-   * tick count is <= each client's).
-   *
-   * <p>{@code clientTick} is the client's own counter. Using max() means lost or reordered packets
-   * don't matter, and a reconnecting client (fresh ClientState, consumed = 0) is counted correctly.
-   */
   public void onTickDone(ServerPlayer player, int clientTick) {
     ClientState state = clients.get(player.getUUID());
     if (state != null) {
@@ -73,30 +85,76 @@ public class MCioMultiplayerSync {
     }
   }
 
-  public void onDisconnect(ServerPlayer player) {
-    if (clients.remove(player.getUUID()) != null) {
+  public void onDisconnect(MinecraftServer server, ServerPlayer player) {
+    server.execute(() -> unregister(player));
+  }
+
+  private void unregister(ServerPlayer player) {
+    ClientState state = clients.get(player.getUUID());
+    if (state != null && state.connection == player.connection) {
+      clients.remove(player.getUUID());
       LOGGER.info(
           "MCio-Unregister player={} remaining={}", player.getName().getString(), clients.size());
     }
   }
 
-  public void onEndServerTick(MinecraftServer server) {
-    if (clients.isEmpty()) {
+  public boolean beforeServerTick() {
+    if (!isPacingActive()) {
+      return false;
+    }
+    ServerTickRateManager trm = server.tickRateManager();
+    if (!trm.isFrozen()) {
+      if (!warnedNotFrozen) {
+        LOGGER.warn("MCio-Pacing-Suspended, server not frozen");
+        warnedNotFrozen = true;
+      }
+      return false;
+    }
+    warnedNotFrozen = false;
+    if (!trm.isSteppingForward()) {
+      tryGrant(trm);
+    }
+    if (trm.isSteppingForward()) {
+      return false; // Run it. tickServer's trm.tick() consumes one step.
+    }
+    if (hasPendingDisconnect()) {
+      return false;
+    }
+    idle();
+    return true;
+  }
+
+  private void tryGrant(ServerTickRateManager trm) {
+    int pending = Integer.MAX_VALUE;
+    for (ClientState state : clients.values()) {
+      pending = Math.min(pending, state.tickDone - state.consumed);
+    }
+    if (pending <= 0) {
+      return; // At least one client has not finished a new tick.
+    }
+    if (!trm.stepGameIfPaused(pending)) {
+      LOGGER.warn("MCio-Tick-Grant failed, server not frozen");
       return;
     }
     for (ClientState state : clients.values()) {
-      if (state.tickDone == state.consumed) {
-        return;
-      }
+      state.consumed += pending;
     }
-    for (ClientState state : clients.values()) {
-      state.consumed = state.tickDone;
-    }
-    server.tickRateManager().stepGameIfPaused(1);
-    grantCount++;
-    if (grantCount % LOG_EVERY == 0) {
+    long before = grantCount;
+    grantCount += pending;
+    int every = MCioConfig.getInstance().tickGrantLogEvery;
+    if (every > 0 && before / every != grantCount / every) {
       LOGGER.info("MCio-Tick-Grant count={} clients={}", grantCount, clients.size());
     }
+  }
+
+  private boolean hasPendingDisconnect() {
+    for (UUID id : clients.keySet()) {
+      ServerPlayer player = server.getPlayerList().getPlayer(id);
+      if (player == null || !player.connection.isAcceptingMessages()) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private void startSprint() {
@@ -109,5 +167,20 @@ public class MCioMultiplayerSync {
     server.getPlayerList().broadcastAll(ClientboundTickingStatePacket.from(trm));
     sprintStarted = true;
     LOGGER.info("MCio-Pacer-Active");
+  }
+
+  private void idle() {
+    long now = Util.getMillis();
+    if (now - lastKeepAliveMs >= KEEPALIVE_INTERVAL_MS) {
+      lastKeepAliveMs = now;
+      for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+        ((ServerCommonPacketListenerImplInvoker) player.connection).mcioKeepConnectionAlive();
+      }
+    }
+    LockSupport.parkNanos(IDLE_PARK_NANOS);
+  }
+
+  public boolean isSprintStarted() {
+    return sprintStarted;
   }
 }

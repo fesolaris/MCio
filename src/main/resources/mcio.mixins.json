@@ -4,6 +4,8 @@
   "compatibilityLevel": "JAVA_21",
   "mixins": [
     "ChunkTrackingViewPositionedMixin",
+    "MinecraftServerMixin",
+    "ServerCommonPacketListenerImplInvoker",
     "ServerStatsCounterMixin",
     "ServerStatsCounterMixin$asStringInvoker",
     "ServerStatsCounterMixin$StatsCounterAccessor",
