@@ -38,7 +38,7 @@ public class MCioObservationHandler {
   // Status effects
 
   // Collect observation and package into an ObservationPacket
-  Optional<ObservationPacket> collectObservation(int lastFullTickActionSequence) {
+  Optional<ObservationPacket> collectObservation(int lastFullTickActionSequence, int serverTick) {
     LocalPlayer player = client.player;
     if (player == null) {
       return Optional.empty();
@@ -73,6 +73,7 @@ public class MCioObservationHandler {
             observationSequence++,
             config.mode.toString(),
             lastFullTickActionSequence,
+            serverTick,
             frameRV.sequence,
             frameRV.height,
             frameRV.width,

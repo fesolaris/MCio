@@ -5,12 +5,14 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.locks.LockSupport;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.Util;
 import net.minecraft.network.protocol.game.ClientboundTickingStatePacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.ServerTickRateManager;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
+import net.twoturtles.MCioSyncPayloads.ServerTickPayload;
 import net.twoturtles.mixin.ServerCommonPacketListenerImplInvoker;
 import net.twoturtles.mixin.ServerTickRateManagerAccessor;
 import net.twoturtles.mixin.TickRateManagerAccessor;
@@ -122,6 +124,18 @@ public class MCioMultiplayerSync {
     }
     idle();
     return true;
+  }
+
+  public void afterServerTick() {
+    if (server == null) {
+      return;
+    }
+    ServerTickPayload payload = new ServerTickPayload(server.getTickCount());
+    for (ClientState state : clients.values()) {
+      if (ServerPlayNetworking.canSend(state.connection, MCioSyncPayloads.SERVER_TICK)) {
+        ServerPlayNetworking.send(state.connection.player, payload);
+      }
+    }
   }
 
   private void tryGrant(ServerTickRateManager trm) {

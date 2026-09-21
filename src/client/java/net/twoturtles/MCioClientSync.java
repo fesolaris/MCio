@@ -6,6 +6,7 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.server.IntegratedServer;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import org.slf4j.Logger;
 
@@ -25,18 +26,24 @@ public class MCioClientSync {
   private boolean multiplayer;
   private boolean readySent = false;
   private int tickDoneCount = 0;
+  private int lastServerTick = -1;
 
   /** See MCioSyncUtil for more info. */
   MCioClientSync(MCioConfig config) {
     client = Minecraft.getInstance();
     this.config = config;
 
+    ClientPlayNetworking.registerGlobalReceiver(
+        MCioSyncPayloads.SERVER_TICK, (payload, context) -> lastServerTick = payload.serverTick());
+
     ClientPlayConnectionEvents.JOIN.register(
         (handler, sender, mc) -> {
           boolean remote = client.getSingleplayerServer() == null;
           multiplayer = config.syncMultiplayer || remote;
           syncUtil.setMultiplayerMode(multiplayer);
+          tickDoneCount = 0;
           readySent = false;
+          lastServerTick = -1;
           LOGGER.info("Sync-Multiplayer mode={} remote={}", multiplayer, remote);
         });
     ClientPlayConnectionEvents.DISCONNECT.register(
@@ -116,13 +123,24 @@ public class MCioClientSync {
 
   // XXX Ideally this would include the update from the server
   void generateObservation() {
-    Optional<ObservationPacket> opt = observationHandler.collectObservation(lastActionSequence);
+    Optional<ObservationPacket> opt =
+        observationHandler.collectObservation(lastActionSequence, currentServerTick());
     if (opt.isPresent()) {
       connection.sendObservationPacket(opt.get(), false);
     } else {
       // client.player is still null
       LOGGER.info("Observation Empty");
     }
+  }
+
+  private int currentServerTick() {
+    if (multiplayer) {
+      return lastServerTick;
+    }
+    // Old singleplayer sync path: client and server threads alternate ticks, so reading the
+    // integrated server's counter here is consistent.
+    IntegratedServer sp = client.getSingleplayerServer();
+    return sp != null ? sp.getTickCount() : -1;
   }
 
   /** If the Action connection goes down, automatically clear inputs. */

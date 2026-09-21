@@ -34,6 +34,7 @@ record ObservationPacket(
     int sequence,
     String mode, // "SYNC" or "ASYNC"
     int last_action_sequence,
+    int server_tick, // Latest server tick whose updates the client has applied. -1 if unknown.
     int frame_sequence,
     int frame_height,
     int frame_width,

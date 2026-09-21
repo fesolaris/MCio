@@ -86,7 +86,7 @@ public class MCioClientAsync {
 
   void generateObservation() {
     Optional<ObservationPacket> opt =
-        observationHandler.collectObservation(lastFullTickActionSequence);
+        observationHandler.collectObservation(lastFullTickActionSequence, -1);
     opt.ifPresent(packet -> connection.sendObservationPacket(packet, false));
   }
 
