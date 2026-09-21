@@ -7,7 +7,9 @@
     "ServerStatsCounterMixin",
     "ServerStatsCounterMixin$asStringInvoker",
     "ServerStatsCounterMixin$StatsCounterAccessor",
-    "ServerTickRateManagerAccessor"
+    "ServerTickRateManagerAccessor",
+    "ServerTickRateManagerMixin",
+    "TickRateManagerAccessor"
   ],
   "injectors": {
     "defaultRequire": 1

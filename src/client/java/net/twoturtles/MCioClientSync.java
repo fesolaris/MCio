@@ -3,7 +3,10 @@ package net.twoturtles;
 import com.mojang.logging.LogUtils;
 import java.util.Optional;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.Minecraft;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import org.slf4j.Logger;
 
 public class MCioClientSync {
@@ -19,11 +22,28 @@ public class MCioClientSync {
   private boolean waitingForFirstAction = true;
   private int lastActionSequence = 0;
   private int ticks = 0;
+  private boolean multiplayer;
+  private boolean readySent = false;
+  private int tickDoneCount = 0;
 
   /** See MCioSyncUtil for more info. */
   MCioClientSync(MCioConfig config) {
     client = Minecraft.getInstance();
     this.config = config;
+
+    ClientPlayConnectionEvents.JOIN.register(
+        (handler, sender, mc) -> {
+          boolean remote = client.getSingleplayerServer() == null;
+          multiplayer = config.syncMultiplayer || remote;
+          syncUtil.setMultiplayerMode(multiplayer);
+          readySent = false;
+          LOGGER.info("Sync-Multiplayer mode={} remote={}", multiplayer, remote);
+        });
+    ClientPlayConnectionEvents.DISCONNECT.register(
+        (handler, mc) -> {
+          readySent = false;
+          syncUtil.multiplayerDisconnect();
+        });
 
     connection = new MCioNetworkConnection();
     actionHandler = new MCioActionHandler(client);
@@ -37,6 +57,11 @@ public class MCioClientSync {
           MCioClientSyncUtil.checkAndSetGameRunning();
           syncUtil.clientStartTick();
           if (syncUtil.isGameRunning()) {
+            if (multiplayer && !readySent && canSend(MCioSyncPayloads.READY)) {
+              readySent = true;
+              ClientPlayNetworking.send(new MCioSyncPayloads.ReadyPayload());
+              LOGGER.info("Sent-Ready");
+            }
             processAction();
           }
         });
@@ -54,6 +79,9 @@ public class MCioClientSync {
     ClientTickEvents.END_CLIENT_TICK.register(
         client_cb -> {
           syncUtil.clientEndTick();
+          if (multiplayer && readySent && canSend(MCioSyncPayloads.TICK_DONE)) {
+            ClientPlayNetworking.send(new MCioSyncPayloads.TickDonePayload(++tickDoneCount));
+          }
         });
 
     // For testing
@@ -103,6 +131,11 @@ public class MCioClientSync {
       LOGGER.info("Clearing Input (Disconnect)");
       actionHandler.requestClearInput();
     }
+  }
+
+  /** False when disconnected or when the server doesn't have MCio's receivers registered. */
+  private boolean canSend(CustomPacketPayload.Type<?> type) {
+    return client.getConnection() != null && ClientPlayNetworking.canSend(type);
   }
 
   void stop() {

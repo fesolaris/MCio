@@ -36,6 +36,7 @@ public class MCioSyncUtil {
   private final AtomicInteger cycleCount =
       new AtomicInteger(); // Track the loops through client/server ticks
   private MinecraftServer server;
+  private boolean multiplayerMode = false;
 
   // Synchronize the transition to gameRunning
   private volatile boolean readyToSyncThreads = false;
@@ -66,18 +67,30 @@ public class MCioSyncUtil {
   }
 
   public void clientStartTick() {
+    if (multiplayerMode) {
+      return;
+    }
     startTick(CLIENT_TICK);
   }
 
   public void clientEndTick() {
+    if (multiplayerMode) {
+      return;
+    }
     endTick(CLIENT_TICK);
   }
 
   public void serverStartTick() {
+    if (multiplayerMode) {
+      return;
+    }
     startTick(SERVER_TICK);
   }
 
   public void serverEndTick() {
+    if (multiplayerMode) {
+      return;
+    }
     endTick(SERVER_TICK);
   }
 
@@ -108,13 +121,18 @@ public class MCioSyncUtil {
   public void setGameRunning(boolean gameRunning) {
     // I think we only need to handle the transition to running
     if (!this.gameRunning && gameRunning) {
-      // Trigger the transition
       LOGGER.info("Ready-To-Sync");
+      if (multiplayerMode) {
+        this.gameRunning = true;
+        return;
+      }
+      // Trigger the transition
       readyToSyncThreads = true;
     }
   }
 
   private void handleThreadSyncTransition() {
+    if (multiplayerMode) return;
     if (!gameRunning && readyToSyncThreads) {
       if (server.isSameThread()) {
         // About to transition to running. Set the server to sprint.
@@ -157,6 +175,17 @@ public class MCioSyncUtil {
     if (gameRunning) {
       LOGGER.debug("Cycle={} {}-End-Tick", cycleCount.get(), ctx.label);
       ctx.releaseSem.release();
+    }
+  }
+
+  public void setMultiplayerMode(boolean multiplayerMode) {
+    this.multiplayerMode = multiplayerMode;
+  }
+
+  /** Multiplayer mode only: allow the game-running transition to happen again on reconnect. */
+  public void multiplayerDisconnect() {
+    if (multiplayerMode) {
+      gameRunning = false;
     }
   }
 

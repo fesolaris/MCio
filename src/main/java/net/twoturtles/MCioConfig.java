@@ -7,6 +7,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
+import net.fabricmc.api.EnvType;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.world.level.GameType;
 import org.slf4j.Logger;
 
@@ -57,6 +59,7 @@ public class MCioConfig {
   public int openLanToPort;
   public GameType openToLanMode;
   public boolean statsReset;
+  public boolean syncMultiplayer;
 
   // Defaults
   public static final MCioMode DEFAULT_MCIO_MODE = MCioMode.ASYNC;
@@ -92,6 +95,8 @@ public class MCioConfig {
     observationTrigger =
         getEnum("MCIO_ASYNC_OBSERVATION_TRIGGER", DEFAULT_ASYNC_OBSERVATION_TRIGGER);
 
+    boolean dedicatedServer = FabricLoader.getInstance().getEnvironmentType() == EnvType.SERVER;
+
     // The default depends on the mode. In sync mode we want to go as fast as possible.
     // Async mode can use however Minecraft is configured.
     boolean defaultUnlimitedFPS =
@@ -113,6 +118,9 @@ public class MCioConfig {
     openLanToPort = getInt("MCIO_OPEN_TO_LAN_PORT", DEFAULT_OPEN_TO_LAN_PORT);
     openToLanMode = getEnum("MCIO_OPEN_TO_LAN_MODE", DEFAULT_OPEN_TO_LAN_MODE);
     statsReset = getBoolean("MCIO_STATS_RESET", DEFAULT_STATS_RESET);
+    syncMultiplayer =
+        getBoolean(
+            "MCIO_SYNC_MULTIPLAYER", mode == MCioMode.SYNC && (openToLan || dedicatedServer));
 
     LOGGER.info("MCIO_MODE={}", mode);
     LOGGER.info("MCIO_FRAME_TYPE={}", frameType);
@@ -129,6 +137,7 @@ public class MCioConfig {
     LOGGER.info("MCIO_OPEN_TO_LAN_PORT={}", openLanToPort);
     LOGGER.info("MCIO_OPEN_TO_LAN_MODE={}", openToLanMode);
     LOGGER.info("MCIO_STATS_RESET={}", statsReset);
+    LOGGER.info("MCIO_SYNC_MULTIPLAYER={}", syncMultiplayer);
   }
 
   // Helper methods for parsing config values from system properties or env vars
@@ -238,6 +247,11 @@ public class MCioConfig {
 
                   MCIO_OPEN_TO_LAN_MODE          %s Default: %s
                     Initial multiplayer mode
+
+                  MCIO_SYNC_MULTIPLAYER          [boolean] Default: see below
+                    Pace the server by all connected MCio clients (multiplayer sync mode).
+                    Defaults to true in SYNC mode when MCIO_OPEN_TO_LAN is set or on a
+                    dedicated server, otherwise false.
 
                 Display Options:
                   MCIO_HIDE_WINDOW               [boolean] Default: %b

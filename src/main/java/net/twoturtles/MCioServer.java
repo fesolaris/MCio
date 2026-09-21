@@ -1,8 +1,7 @@
 /**
  * Top-level file for code that runs on the Server (Main) thread Note: "Server" here refers to the
  * logical server that exists in both single-player and dedicated server environments. In
- * single-player, this runs within the client process. Note 2: MCio currently only actively supports
- * single-player environments.
+ * single-player, this runs within the client process.
  */
 package net.twoturtles;
 
@@ -10,6 +9,8 @@ import com.mojang.logging.LogUtils;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import org.slf4j.Logger;
 
 public class MCioServer implements ModInitializer {
@@ -29,6 +30,23 @@ public class MCioServer implements ModInitializer {
      */
     LOGGER.info("Main-Init");
     config = MCioConfig.getInstance();
+
+    if (config.mode == MCioConfig.MCioMode.SYNC) {
+      MCioSyncPayloads.registerCommon();
+      ServerPlayNetworking.registerGlobalReceiver(
+          MCioSyncPayloads.READY,
+          (payload, context) -> MCioMultiplayerSync.getInstance().onReady(context.player()));
+      ServerPlayNetworking.registerGlobalReceiver(
+          MCioSyncPayloads.TICK_DONE,
+          (payload, context) ->
+              MCioMultiplayerSync.getInstance().onTickDone(context.player(), payload.clientTick()));
+      ServerPlayConnectionEvents.DISCONNECT.register(
+          (handler, server) -> {
+            if (handler.getPlayer() != null) {
+              MCioMultiplayerSync.getInstance().onDisconnect(handler.getPlayer());
+            }
+          });
+    }
 
     ServerLifecycleEvents.SERVER_STARTED.register(
         server -> {

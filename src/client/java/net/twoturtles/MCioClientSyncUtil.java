@@ -10,8 +10,10 @@ public class MCioClientSyncUtil {
   public static void checkAndSetGameRunning() {
     Minecraft client = Minecraft.getInstance();
 
+    boolean remote = client.getSingleplayerServer() == null;
     boolean chunksReady =
-        !MCioConfig.getInstance().mcioPreloadChunks
+        remote
+            || !MCioConfig.getInstance().mcioPreloadChunks
             || MCioChunks.getInstance().clientInitialLoadComplete();
 
     // A "Screen" is an overlay, like "Loading", so currentScreen is null when the game window is
