@@ -48,6 +48,8 @@ record ObservationPacket(
     float[] player_pos, // [x, y, z]
     float player_pitch,
     float player_yaw,
+    int hits_landed,
+    int crits_landed,
     ArrayList<InventorySlot> inventory_main,
     ArrayList<InventorySlot> inventory_armor,
     ArrayList<InventorySlot> inventory_offhand,

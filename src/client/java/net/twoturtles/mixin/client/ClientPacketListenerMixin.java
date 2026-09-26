@@ -2,7 +2,10 @@ package net.twoturtles.mixin.client;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientPacketListener;
+import net.minecraft.network.protocol.game.ClientboundAnimatePacket;
 import net.minecraft.network.protocol.game.ClientboundAwardStatsPacket;
+import net.minecraft.network.protocol.game.ClientboundDamageEventPacket;
+import net.twoturtles.MCioHitTracker;
 import net.twoturtles.MCioStats;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -23,5 +26,15 @@ public abstract class ClientPacketListenerMixin {
     if (Minecraft.getInstance().getSingleplayerServer() == null) {
       MCioStats.getInstance().updateStatsFromServer(packet.stats());
     }
+  }
+
+  @Inject(method = "handleDamageEvent", at = @At("TAIL"))
+  private void mcioOnDamageEvent(ClientboundDamageEventPacket packet, CallbackInfo ci) {
+    MCioHitTracker.getInstance().onDamageEvent(packet.entityId(), packet.sourceCauseId());
+  }
+
+  @Inject(method = "handleAnimate", at = @At("TAIL"))
+  private void mcioOnAnimate(ClientboundAnimatePacket packet, CallbackInfo ci) {
+    MCioHitTracker.getInstance().onAnimate(packet.getId(), packet.getAction());
   }
 }

@@ -65,6 +65,7 @@ public class MCioObservationHandler {
     int cursorMode = GLFW.glfwGetInputMode(window.getWindow(), GLFW.GLFW_CURSOR);
     // There are other modes, but I believe these are the two used by Minecraft.
     cursorMode = cursorMode == GLFW.GLFW_CURSOR_DISABLED ? cursorMode : GLFW.GLFW_CURSOR_NORMAL;
+    int[] hitCounts = MCioHitTracker.getInstance().takeCounts();
 
     /* Create packet */
     ObservationPacket observationPkt =
@@ -85,6 +86,8 @@ public class MCioObservationHandler {
             fPlayerPos,
             player.getXRot(),
             getYaw(player),
+            hitCounts[0],
+            hitCounts[1],
             inventoriesRV.main,
             inventoriesRV.armor,
             inventoriesRV.offHand,
