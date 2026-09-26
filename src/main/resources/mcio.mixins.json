@@ -8,6 +8,7 @@
     "ServerCommonPacketListenerImplInvoker",
     "ServerStatsCounterMixin",
     "ServerStatsCounterMixin$asStringInvoker",
+    "ServerStatsCounterMixin$DirtyAccessor",
     "ServerStatsCounterMixin$StatsCounterAccessor",
     "ServerTickRateManagerAccessor",
     "ServerTickRateManagerMixin",

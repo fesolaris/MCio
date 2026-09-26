@@ -3,6 +3,7 @@
   "package": "net.twoturtles.mixin.client",
   "compatibilityLevel": "JAVA_21",
   "client": [
+    "ClientPacketListenerMixin",
     "DefaultPlayerSkinMixin",
     "DefaultPlayerSkinMixin$SkinAccessor",
     "MinecraftMixin",

@@ -54,6 +54,14 @@ public class MCioStats {
     this.pendingStats.add(stat);
   }
 
+  // Called on the client (render thread) with stats pushed from a remote server.
+  public synchronized void updateStatsFromServer(Object2IntMap<Stat<?>> stats) {
+    for (Object2IntMap.Entry<Stat<?>> entry : stats.object2IntEntrySet()) {
+      statMap.put(entry.getKey(), entry.getIntValue());
+      pendingStats.add(entry.getKey());
+    }
+  }
+
   // Called by server after the stats are loaded from json
   public synchronized void replaceStats(ServerStatsCounter handler, Object2IntMap<Stat<?>> other) {
     if (handler != localHandler) return;
@@ -127,5 +135,11 @@ public class MCioStats {
     }
 
     return sb.toString();
+  }
+
+  // Called by the client when joining a remote server so stats from a previous world don't leak.
+  public synchronized void clear() {
+    statMap = new Object2IntOpenHashMap<>();
+    pendingStats = Sets.newHashSet();
   }
 }

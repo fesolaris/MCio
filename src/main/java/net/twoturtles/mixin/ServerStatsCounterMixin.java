@@ -2,6 +2,7 @@ package net.twoturtles.mixin;
 
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import java.io.File;
+import java.util.Set;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.stats.ServerStatsCounter;
 import net.minecraft.stats.Stat;
@@ -35,6 +36,12 @@ public abstract class ServerStatsCounterMixin {
   public interface asStringInvoker {
     @Invoker("toJson")
     public String invokeToJson();
+  }
+
+  @Mixin(ServerStatsCounter.class)
+  public interface DirtyAccessor {
+    @Accessor("dirty")
+    Set<Stat<?>> mcioGetDirty();
   }
 
   @Inject(method = "setValue", at = @At("HEAD"))

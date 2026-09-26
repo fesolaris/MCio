@@ -50,7 +50,7 @@ public final class MCioSyncPayloads {
   public static void registerCommon() {
     PayloadTypeRegistry.playC2S().register(READY, ReadyPayload.CODEC);
     PayloadTypeRegistry.playC2S().register(TICK_DONE, TickDonePayload.CODEC);
-    PayloadTypeRegistry.playC2S().register(SERVER_TICK, ServerTickPayload.CODEC);
+    PayloadTypeRegistry.playS2C().register(SERVER_TICK, ServerTickPayload.CODEC);
   }
 
   private MCioSyncPayloads() {}

@@ -12,8 +12,10 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.ServerTickRateManager;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
+import net.minecraft.stats.ServerStatsCounter;
 import net.twoturtles.MCioSyncPayloads.ServerTickPayload;
 import net.twoturtles.mixin.ServerCommonPacketListenerImplInvoker;
+import net.twoturtles.mixin.ServerStatsCounterMixin;
 import net.twoturtles.mixin.ServerTickRateManagerAccessor;
 import net.twoturtles.mixin.TickRateManagerAccessor;
 import org.slf4j.Logger;
@@ -132,6 +134,14 @@ public class MCioMultiplayerSync {
     }
     ServerTickPayload payload = new ServerTickPayload(server.getTickCount());
     for (ClientState state : clients.values()) {
+      ServerPlayer player = state.connection.player;
+      // Remote clients have no local ServerStatsCounter, so push this tick's stat changes.
+      // sendStats() sends only the dirty (changed) stats; the first send after join has all of
+      // them.
+      ServerStatsCounter stats = player.getStats();
+      if (!((ServerStatsCounterMixin.DirtyAccessor) stats).mcioGetDirty().isEmpty()) {
+        stats.sendStats(player);
+      }
       if (ServerPlayNetworking.canSend(state.connection, MCioSyncPayloads.SERVER_TICK)) {
         ServerPlayNetworking.send(state.connection.player, payload);
       }

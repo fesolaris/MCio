@@ -68,6 +68,12 @@ class MCioActionHandler {
       }
     }
 
+    if (action.inputs().length > 0 && client.getOverlay() != null) {
+      LOGGER.warn(
+          "Input-Dropped: overlay {} is up, mouse buttons are ignored",
+          client.getOverlay().getClass().getSimpleName());
+    }
+
     // Key / Mouse button handling
     for (InputEvent input : action.inputs()) {
       switch (input.type()) {

@@ -44,6 +44,9 @@ public class MCioClientSync {
           tickDoneCount = 0;
           readySent = false;
           lastServerTick = -1;
+          if (remote) {
+            MCioStats.getInstance().clear();
+          }
           LOGGER.info("Sync-Multiplayer mode={} remote={}", multiplayer, remote);
         });
     ClientPlayConnectionEvents.DISCONNECT.register(
