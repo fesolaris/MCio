@@ -64,6 +64,8 @@ public class MCioClientSync {
     ClientTickEvents.START_CLIENT_TICK.register(
         client_cb -> {
           ticks++;
+          MCioProfile.tick();
+          long tTick = MCioProfile.t();
           MCioClientSyncUtil.checkAndSetGameRunning();
           syncUtil.clientStartTick();
           if (syncUtil.isGameRunning()) {
@@ -74,6 +76,7 @@ public class MCioClientSync {
             }
             processAction();
           }
+          MCioProfile.add(MCioProfile.Phase.CLIENT_TICK, tTick);
         });
 
     MCioFrameCapture frameCapture = MCioFrameCapture.getInstance();
@@ -108,7 +111,9 @@ public class MCioClientSync {
     if (waitingForFirstAction) {
       LOGGER.info("Waiting for first action");
     }
+    long tRecv = MCioProfile.t();
     Optional<ActionPacket> optAction = connection.recvActionPacket(true);
+    MCioProfile.add(MCioProfile.Phase.ACTION_RECV, tRecv);
     if (optAction.isEmpty()) {
       LOGGER.warn("Invalid action");
       return;
@@ -121,13 +126,17 @@ public class MCioClientSync {
     ActionPacket action = optAction.get();
     lastActionSequence = action.sequence();
     LOGGER.debug("ACTION {}", action);
+    long tProcess = MCioProfile.t();
     actionHandler.processAction(action);
+    MCioProfile.add(MCioProfile.Phase.ACTION_PROCESS, tProcess);
   }
 
   // XXX Ideally this would include the update from the server
   void generateObservation() {
+    long tCollect = MCioProfile.t();
     Optional<ObservationPacket> opt =
         observationHandler.collectObservation(lastActionSequence, currentServerTick());
+    MCioProfile.add(MCioProfile.Phase.OBS_COLLECT, tCollect);
     if (opt.isPresent()) {
       connection.sendObservationPacket(opt.get(), false);
     } else {

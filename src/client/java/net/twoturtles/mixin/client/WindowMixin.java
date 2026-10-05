@@ -8,6 +8,7 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.Minecraft;
 import net.twoturtles.MCioConfig;
 import net.twoturtles.MCioFrameCapture;
+import net.twoturtles.MCioProfile;
 import org.lwjgl.glfw.GLFW;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,20 +48,26 @@ public class WindowMixin {
     int width = window.getWidth();
     int height = window.getHeight();
 
+    long tAlloc = MCioProfile.t();
     ByteBuffer pixelBuffer =
         ByteBuffer.allocateDirect(width * height * frameCapture.BYTES_PER_PIXEL);
     pixelBuffer.clear(); // Reset position to 0
+    MCioProfile.add(MCioProfile.Phase.CAPTURE_ALLOC, tAlloc);
 
     // Need alignment set to 1 to properly read frame sizes that are not multiples of 4.
     int[] alignment = new int[1];
     glGetIntegerv(GL_PACK_ALIGNMENT, alignment);
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
     glReadBuffer(GL_BACK);
+    long tRead = MCioProfile.t();
     glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, pixelBuffer);
+    MCioProfile.add(MCioProfile.Phase.CAPTURE_READ, tRead);
     // Reset alignment to previous value
     glPixelStorei(GL_PACK_ALIGNMENT, alignment[0]);
 
+    long tCallback = MCioProfile.t();
     frameCapture.capture(pixelBuffer, width, height);
+    MCioProfile.add(MCioProfile.Phase.CAPTURE_CALLBACK, tCallback);
   }
 
   // Intercepts the call to glfwDefaultWindowHints() so we can make modifications to the hints.

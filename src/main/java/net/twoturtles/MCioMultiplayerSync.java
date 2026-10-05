@@ -201,7 +201,9 @@ public class MCioMultiplayerSync {
         ((ServerCommonPacketListenerImplInvoker) player.connection).mcioKeepConnectionAlive();
       }
     }
+    long tIdle = MCioProfile.t();
     LockSupport.parkNanos(IDLE_PARK_NANOS);
+    MCioProfile.add(MCioProfile.Phase.SERVER_IDLE, tIdle);
   }
 
   public boolean isSprintStarted() {

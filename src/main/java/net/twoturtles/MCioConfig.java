@@ -60,6 +60,7 @@ public class MCioConfig {
   public GameType openToLanMode;
   public boolean statsReset;
   public boolean syncMultiplayer;
+  public boolean profile;
   public int tickGrantLogEvery;
 
   // Defaults
@@ -80,6 +81,7 @@ public class MCioConfig {
   public static final int DEFAULT_OPEN_TO_LAN_PORT = 12001;
   public static final GameType DEFAULT_OPEN_TO_LAN_MODE = GameType.SPECTATOR;
   public static final boolean DEFAULT_STATS_RESET = true;
+  public static final boolean DEFAULT_PROFILE = false;
   public static final int DEFAULT_TICK_GRANT_LOG_EVERY = 200;
 
   // Singleton instance
@@ -120,6 +122,7 @@ public class MCioConfig {
     openLanToPort = getInt("MCIO_OPEN_TO_LAN_PORT", DEFAULT_OPEN_TO_LAN_PORT);
     openToLanMode = getEnum("MCIO_OPEN_TO_LAN_MODE", DEFAULT_OPEN_TO_LAN_MODE);
     statsReset = getBoolean("MCIO_STATS_RESET", DEFAULT_STATS_RESET);
+    profile = getBoolean("MCIO_PROFILE", DEFAULT_PROFILE);
     syncMultiplayer =
         getBoolean(
             "MCIO_SYNC_MULTIPLAYER", mode == MCioMode.SYNC && (openToLan || dedicatedServer));
@@ -140,6 +143,7 @@ public class MCioConfig {
     LOGGER.info("MCIO_OPEN_TO_LAN_PORT={}", openLanToPort);
     LOGGER.info("MCIO_OPEN_TO_LAN_MODE={}", openToLanMode);
     LOGGER.info("MCIO_STATS_RESET={}", statsReset);
+    LOGGER.info("MCIO_PROFILE={}", profile);
     LOGGER.info("MCIO_SYNC_MULTIPLAYER={}", syncMultiplayer);
     LOGGER.info("MCIO_TICK_GRANT_LOG_EVERY={}", tickGrantLogEvery);
   }
@@ -287,6 +291,9 @@ public class MCioConfig {
                     Reset all stats to zero on player connect.
                     This is done by skipping the stats json load.
 
+                  MCIO_PROFILE                   [boolean] Default: %b
+                    Enable per-phase timing logs (PROFILE phase=... lines every 2 s)
+
                   MCIO_HELP_SKINS                [boolean] Default: false
                     List the default skins and exit
 
@@ -322,6 +329,7 @@ public class MCioConfig {
             DEFAULT_SYNC_SPEED_TEST,
             DEFAULT_MCIO_SKIN,
             DEFAULT_STATS_RESET,
+            DEFAULT_PROFILE,
             Arrays.toString(MCioAsyncObsTrigger.values()),
             DEFAULT_ASYNC_OBSERVATION_TRIGGER,
             Arrays.toString(MCioFrameType.values()),

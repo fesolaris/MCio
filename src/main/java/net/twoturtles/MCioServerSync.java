@@ -10,6 +10,7 @@ class MCioServerSync {
   private final Logger LOGGER = LogUtils.getLogger();
   private final MCioSyncUtil syncUtil = MCioSyncUtil.getInstance();
   private final MCioConfig config;
+  private long serverTickStartNs = 0;
 
   public MCioServerSync(MCioConfig config) {
     this.config = config;
@@ -30,11 +31,18 @@ class MCioServerSync {
     if (!config.syncMultiplayer) {
       syncUtil.serverStartTick();
     }
+    serverTickStartNs = MCioProfile.t();
   }
 
   void endTickCB(MinecraftServer server) {
+    if (serverTickStartNs != 0) {
+      MCioProfile.add(MCioProfile.Phase.SERVER_TICK, serverTickStartNs);
+      serverTickStartNs = 0;
+    }
     if (config.syncMultiplayer) {
+      long tPush = MCioProfile.t();
       MCioMultiplayerSync.getInstance().afterServerTick();
+      MCioProfile.add(MCioProfile.Phase.SERVER_PUSH, tPush);
     } else {
       syncUtil.serverEndTick();
     }

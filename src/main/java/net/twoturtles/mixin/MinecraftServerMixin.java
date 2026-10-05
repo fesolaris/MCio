@@ -4,6 +4,7 @@ import java.util.function.BooleanSupplier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.TickTask;
 import net.twoturtles.MCioMultiplayerSync;
+import net.twoturtles.MCioProfile;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -20,7 +21,10 @@ public abstract class MinecraftServerMixin {
    */
   @Inject(method = "tickServer", at = @At("HEAD"), cancellable = true)
   private void mcioGateTick(BooleanSupplier hasTimeLeft, CallbackInfo ci) {
-    if (MCioMultiplayerSync.getInstance().beforeServerTick()) {
+    long tGate = MCioProfile.t();
+    boolean cancel = MCioMultiplayerSync.getInstance().beforeServerTick();
+    MCioProfile.add(MCioProfile.Phase.SERVER_GATE, tGate);
+    if (cancel) {
       ci.cancel();
     }
   }

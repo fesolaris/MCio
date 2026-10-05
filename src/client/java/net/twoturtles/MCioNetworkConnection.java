@@ -64,10 +64,14 @@ class MCioNetworkConnection {
   // Send an observation packet to the agent
   void sendObservationPacket(ObservationPacket observationPacket, boolean block) {
     try {
+      long tPack = MCioProfile.t();
       byte[] pBytes = ObservationPacketPacker.pack(observationPacket);
+      MCioProfile.add(MCioProfile.Phase.OBS_PACK, tPack);
       // Send to agent
       int flags = block ? 0 : ZMQ.DONTWAIT;
+      long tSend = MCioProfile.t();
       boolean success = observationSM.socket.send(pBytes, flags);
+      MCioProfile.add(MCioProfile.Phase.OBS_SEND, tSend);
       if (!success && observationSM.socket.errno() != ZMQ.Error.EAGAIN.getCode()) {
         LOGGER.warn("SEND FAILED error={}", ZMQ.Error.findByCode(observationSM.socket.errno()));
       }
