@@ -23,12 +23,33 @@ public final class MCioFrameCapture {
   private int frameSequence = 0; // Total number of frames so far
   private int frameCaptureSequence = 0; // Number of frames
   private MCioFrame lastCapturedFrame = null;
+  // Set per action by MCioClientSync: false = this step's observation carries no frame,
+  // so WindowMixin skips the (expensive) glReadPixels for it.
+  private boolean frameRequested = true;
+  private boolean frameSkipped = false;
 
   // Singleton instance
   private static final MCioFrameCapture INSTANCE = new MCioFrameCapture();
 
   public static MCioFrameCapture getInstance() {
     return INSTANCE;
+  }
+
+  public void setFrameRequested(boolean requested) {
+    frameRequested = requested;
+  }
+
+  public boolean isFrameRequested() {
+    return frameRequested;
+  }
+
+  /** True when the current step's action asked to omit the frame from the observation. */
+  public boolean isFrameSkipped() {
+    return frameSkipped;
+  }
+
+  public int getLastFrameSequence() {
+    return lastCapturedFrame == null ? 0 : lastCapturedFrame.frame_sequence();
   }
 
   public void setEnabled(boolean enabled_val) {
@@ -56,7 +77,19 @@ public final class MCioFrameCapture {
         new MCioFrame(
             frameSequence, frameCaptureSequence, width, height, BYTES_PER_PIXEL, pixelBuffer);
     lastCapturedFrame = frame;
+    frameSkipped = false;
     invokeCaptureCallbacks(frame);
+  }
+
+  /**
+   * Frame omitted for this step (action.send_frame false): no readback, no frame in the
+   * observation. The callbacks still run so the observation is produced and sent.
+   */
+  public void captureSkipped() {
+    frameCaptureSequence++;
+    captureFPS.count();
+    frameSkipped = true;
+    invokeCaptureCallbacks(lastCapturedFrame);
   }
 
   public void incrementFrameSequence() {

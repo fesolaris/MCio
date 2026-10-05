@@ -42,7 +42,8 @@ public class SpeedTest {
             false,
             new InputEvent[] {},
             new double[0][],
-            new ArrayList<>());
+            new ArrayList<>(),
+            null);
 
     byte[] pBytes;
     try {

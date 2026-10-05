@@ -39,6 +39,11 @@ public class WindowMixin {
 
     if (!frameCapture.isEnabled()) return;
 
+    if (!frameCapture.isFrameRequested()) {
+      frameCapture.captureSkipped();
+      return;
+    }
+
     doCapture(frameCapture);
   }
 

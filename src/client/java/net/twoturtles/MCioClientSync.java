@@ -126,6 +126,8 @@ public class MCioClientSync {
     ActionPacket action = optAction.get();
     lastActionSequence = action.sequence();
     LOGGER.debug("ACTION {}", action);
+    MCioFrameCapture.getInstance()
+        .setFrameRequested(action.send_frame() == null || action.send_frame());
     long tProcess = MCioProfile.t();
     actionHandler.processAction(action);
     MCioProfile.add(MCioProfile.Phase.ACTION_PROCESS, tProcess);

@@ -143,9 +143,9 @@ public class MCioObservationHandler {
   /* Return type for getFrame */
   record FrameRV(
       int sequence, int height, int width, MCioConfig.MCioFrameType type, ByteBuffer frame) {
-    public static FrameRV empty() {
+    public static FrameRV empty(int sequence) {
       return new FrameRV(
-          0, // Maybe make this -1 to signify empty
+          sequence,
           0,
           0,
           MCioConfig.DEFAULT_MCIO_FRAME_TYPE,
@@ -155,9 +155,15 @@ public class MCioObservationHandler {
   }
 
   private FrameRV getFrame() {
-    MCioFrameCapture.MCioFrame frame = MCioFrameCapture.getInstance().getLastCapturedFrame();
+    MCioFrameCapture frameCapture = MCioFrameCapture.getInstance();
+    MCioFrameCapture.MCioFrame frame = frameCapture.getLastCapturedFrame();
+    if (frameCapture.isFrameSkipped()) {
+      // This step's action asked for no frame: send an empty one, keeping the previous
+      // frame_sequence so consumers can tell no new frame was produced.
+      return FrameRV.empty(frameCapture.getLastFrameSequence());
+    }
     if (frame == null || frame.frame() == null) {
-      return FrameRV.empty();
+      return FrameRV.empty(0);
     }
 
     /* If FPS SEND > FPS CAPTURE, we'll be sending duplicate frames. */

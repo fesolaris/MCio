@@ -126,8 +126,11 @@ record ActionPacket(
     // Array of length 1 of (xpos, ypos) pairs. Array just for consistency.
     // Also, the list makes it easy to leave empty.
     double[][] cursor_pos,
-    ArrayList<Option> options // Future use
-    ) {
+    ArrayList<Option> options, // Future use
+    /* Null (field absent) = send the frame, like every older client. False = this step's
+     * observation carries no frame (it is still produced and sent): the caller discards
+     * it, e.g. the non-final tick of an action-repeat step. */
+    Boolean send_frame) {
   // Helper for debugging to print the double arrays nicely
   public String arrayToString(int[][] array) {
     return Arrays.deepToString(array);
